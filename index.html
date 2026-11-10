@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paradise English School</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@500;700&display=swap" rel="stylesheet">
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import {getFirestore,collection,addDoc,getDocs,deleteDoc,doc,onSnapshot,query,where,getDoc,setDoc,updateDoc} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyDwwZOpGenttWmtl6ee93WuaKphTYyqnbI",authDomain:"paradise-school-1c8ad.firebaseapp.com",projectId:"paradise-school-1c8ad",storageBucket:"paradise-school-1c8ad.firebasestorage.app",messagingSenderId:"318702740885",appId:"1:318702740885:web:b01933214a6f680c5ec29c"};
+const app=initializeApp(firebaseConfig);
+window.db=getFirestore(app);
+window.FB={collection,addDoc,getDocs,deleteDoc,doc,onSnapshot,query,where,getDoc,setDoc,updateDoc};
+</script>
+<style>
+body{font-family:'Mukta',sans-serif;background:#f8fafc}
+.app-card{background:#fff;border:1px solid #e2e8f0}
+.premium-input{background:#f8fafc;border:2px solid #e2e8f0}
+.premium-input:focus{outline:none;border-color:#6366f1;background:#fff}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:12px 20px;border-radius:999px;font-size:12px;font-weight:700;z-index:9999;display:none}
+.top-header{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+#photo-modal{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px}
+.att-btn{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:900;border:2px solid #e2e8f0;background:#fff}
+.att-btn.active.present{background:#10b981;color:#fff;border-color:#10b981}
+.att-btn.active.absent{background:#ef4444;color:#fff;border-color:#ef4444}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<div id="photo-modal" onclick="closePhoto()"><div class="bg-white rounded-2xl overflow-hidden max-w-sm w-full" onclick="event.stopPropagation()"><img id="modal-img" src="" class="w-full max-h-[70vh] object-contain bg-black"><div class="p-4"><p id="modal-title" class="font-bold text-sm"></p><p id="modal-cls" class="text-xs text-slate-500"></p><div class="flex gap-2 mt-3"><button onclick="downloadCurrentPhoto()" class="flex-1 bg-indigo-600 text-white text-center py-2.5 rounded-xl text-sm font-bold">⬇️ Download</button><button onclick="closePhoto()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-sm font-bold">Close</button></div></div></div></div>
+<div id="screen-login" class="min-h-screen flex justify-center items-center p-4"><div class="bg-white rounded-[2rem] p-7 shadow-xl w-full max-w-sm border"><div class="text-center mb-6"><div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-2xl">🏫</div><h1 class="text-xl font-black text-indigo-700 mt-2">Paradise English School</h1><p id="expiry-info-login" class="text-[10px] text-emerald-600 mt-1 font-bold"></p></div><div class="flex bg-slate-100 rounded-2xl p-1 mb-4"><button onclick="setRole('admin')" id="btn-admin" class="flex-1 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl">Admin/Teacher</button><button onclick="setRole('student')" id="btn-student" class="flex-1 py-2 text-xs font-bold text-slate-600 rounded-xl">Student</button></div><p id="login-error" class="hidden text-rose-600 text-xs mb-2 p-2 bg-rose-50 rounded-xl font-bold"></p><form id="form-admin" class="space-y-2"><input id="admin-email" type="text" required class="premium-input w-full p-3 rounded-xl text-sm" placeholder="Username"><input id="admin-pass" type="password" required class="premium-input w-full p-3 rounded-xl text-sm" placeholder="Password"><button class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">लग-इन →</button></form><form id="form-student" class="space-y-2 hidden"><select id="stu-class" class="premium-input w-full p-3 rounded-xl text-sm font-bold"></select><input id="stu-roll" placeholder="Roll Number" required class="premium-input w-full p-3 rounded-xl text-sm"><button class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">Student Login →</button></form></div></div>
+<div id="screen-app" class="hidden max-w-md mx-auto bg-slate-50 min-h-screen pb-20"><div class="top-header"><b class="text-[15px] font-black">🏫 Paradise</b><div class="flex items-center gap-1"><span id="my-role" class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-bold"></span><button onclick="logout()" class="bg-rose-600 text-white px-4 py-1.5 rounded-full text-[11px] font-bold ml-1">Sign Out</button></div></div>
+<nav class="p-2 bg-white flex gap-1 overflow-x-auto sticky top-[52px] z-10 border-b">
+<button onclick="openTab('students',this)" class="tab px-3 py-2 text-[11px] bg-indigo-600 text-white rounded-xl font-bold">विद्यार्थी</button><button onclick="openTab('teachers',this)" id="tab-btn-teachers" class="tab px-3 py-2 text-[11px] rounded-xl">शिक्षक</button><button onclick="openTab('attendance',this)" class="tab px-3 py-2 text-[11px] rounded-xl">हाजिरी</button><button onclick="openTab('fees',this)" class="tab px-3 py-2 text-[11px] rounded-xl">Fees</button><button onclick="openTab('result',this)" class="tab px-3 py-2 text-[11px] rounded-xl">Result</button><button onclick="openTab('homework',this)" class="tab px-3 py-2 text-[11px] rounded-xl">HW</button><button onclick="openTab('notice',this)" class="tab px-3 py-2 text-[11px] rounded-xl">Notice</button><button onclick="openTab('gallery',this)" class="tab px-3 py-2 text-[11px] rounded-xl">Gallery</button><button onclick="openTab('settings',this)" id="tab-btn-settings" class="hidden tab px-3 py-2 text-[11px] bg-yellow-400 font-bold rounded-xl">⚙️ Settings</button>
+</nav>
+<main class="p-3 space-y-3">
+<div id="tab-students"><div id="box-add-student" class="app-card p-4 rounded-2xl mb-3"><b class="text-sm">विद्यार्थी थप्ने - <span id="teacher-class-info" class="text-[10px] text-indigo-600"></span></b><form id="form-add-student" class="mt-2 space-y-2"><input id="s-name" placeholder="नाम" required class="premium-input w-full p-3 rounded-xl text-sm"><div class="flex gap-2"><select id="s-class" class="premium-input w-1/2 p-3 rounded-xl text-sm font-bold"></select><input id="s-roll" placeholder="Roll" required class="premium-input w-1/2 p-3 rounded-xl text-sm"></div><button id="btn-s-save" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">+ थप्नुहोस्</button></form></div><div class="app-card p-4 rounded-2xl"><b class="text-sm">विद्यार्थी सूची - <span id="perm-info" class="text-[10px] text-slate-500"></span></b>
+<input id="student-search" oninput="filterStudents()" placeholder="🔍 Search Class - 1, LKG, PG..." class="premium-input w-full p-3 rounded-xl text-sm mt-3 border-2 border-indigo-200 hidden">
+<div id="list-students" class="mt-3 space-y-2"></div></div></div>
+<div id="tab-teachers" class="hidden"><div id="box-add-teacher" class="app-card p-4 rounded-2xl mb-3"><b class="text-sm">शिक्षक थप्ने (Admin only)</b><form id="form-add-teacher" class="mt-2 space-y-2"><input id="t-name" placeholder="नाम" required class="premium-input w-full p-3 rounded-xl text-sm"><input id="t-email" placeholder="Username" required class="premium-input w-full p-3 rounded-xl text-sm"><input id="t-pass" placeholder="Password" required class="premium-input w-full p-3 rounded-xl text-sm"><select id="t-class" class="premium-input w-full p-3 rounded-xl text-sm font-bold"></select><button id="btn-t-save" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">+ शिक्षक थप्नुहोस्</button></form></div><div class="app-card p-4 rounded-2xl"><b class="text-sm">शिक्षक सूची</b><input id="teacher-search" placeholder="नाम Search..." class="premium-input w-full p-2 rounded-xl text-sm mt-2" oninput="filterTeachers()"><div id="list-teachers" class="mt-3 space-y-2"></div></div></div>
+<div id="tab-attendance" class="hidden"><div class="app-card p-4 rounded-2xl"><b class="text-sm">हाजिरी - <span id="att-info"></span></b><div id="att-class-box" class="mt-2"></div><div id="att-date-filter" class="mt-2 flex gap-2"><select id="att-filter-class" class="premium-input flex-1 p-2 rounded-xl text-xs"></select><input id="att-filter-date" type="date" class="premium-input flex-1 p-2 rounded-xl text-xs"><button onclick="filterAttendance()" class="bg-indigo-600 text-white px-3 rounded-xl text-xs">Filter</button></div><div id="box-att-mark" class="mt-2"></div><div id="list-att" class="mt-3 space-y-2"></div></div></div>
+<div id="tab-fees" class="hidden"><div id="box-add-fees" class="app-card p-4 rounded-2xl mb-3 border-l-4 border-emerald-500"><b class="text-sm">Fees - <span class="teacher-only-class text-[10px] text-indigo-600"></span></b><form id="form-add-fees" class="mt-2 space-y-2"><div class="flex gap-2"><select id="fee-class" class="premium-input w-1/2 p-3 rounded-xl text-sm"></select><input id="fee-roll" placeholder="Roll" required class="premium-input w-1/2 p-3 rounded-xl text-sm"></div><input id="fee-amount" type="number" placeholder="Total Amount" required class="premium-input w-full p-3 rounded-xl text-sm"><input id="fee-paid" type="number" placeholder="Paid Amount" required class="premium-input w-full p-3 rounded-xl text-sm"><input id="fee-date" type="date" class="premium-input w-full p-3 rounded-xl text-sm"><select id="fee-status" class="premium-input w-full p-3 rounded-xl text-sm"><option>Due</option><option>Paid</option><option>Partial</option></select><button id="btn-f-save" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">Save Fees</button></form></div><div class="app-card p-4 rounded-2xl"><div id="list-fees" class="space-y-2"></div></div></div>
+<div id="tab-result" class="hidden"><div id="box-add-result" class="app-card p-4 rounded-2xl mb-3 border-l-4 border-indigo-500"><b class="text-sm">Result - <span class="teacher-only-class text-[10px] text-indigo-600"></span></b><form id="form-add-result" class="mt-2 space-y-2"><div class="flex gap-2"><select id="res-class" class="premium-input w-1/2 p-3 rounded-xl text-sm"></select><input id="res-roll" placeholder="Roll" required class="premium-input w-1/2 p-3 rounded-xl text-sm"></div><select id="res-terminal" class="premium-input w-full p-3 rounded-xl text-sm"><option>First Terminal</option><option>Second Terminal</option><option>Third Terminal</option><option>Final</option></select><input id="res-sub" placeholder="Subject" required class="premium-input w-full p-3 rounded-xl text-sm"><input id="res-marks" type="number" placeholder="Marks" required class="premium-input w-full p-3 rounded-xl text-sm"><input id="res-remark" placeholder="Remark" class="premium-input w-full p-3 rounded-xl text-sm"><input id="res-discipline" placeholder="Discipline" class="premium-input w-full p-3 rounded-xl text-sm"><input id="res-weakness" placeholder="कमजोरी" class="premium-input w-full p-3 rounded-xl text-sm"><button id="btn-r-save" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Save Result</button></form></div><div class="app-card p-4 rounded-2xl"><div id="list-result" class="space-y-2"></div></div></div>
+<div id="tab-homework" class="hidden"><div id="box-add-hw" class="app-card p-4 rounded-2xl mb-3"><b class="text-sm">Homework - <span class="teacher-only-class text-[10px] text-indigo-600"></span></b><form id="form-add-hw" class="mt-2 space-y-2"><select id="hw-class" class="premium-input w-full p-3 rounded-xl text-sm"></select><input id="hw-date" type="date" class="premium-input w-full p-3 rounded-xl text-sm"><input id="hw-sub" placeholder="Subject - English, Math, Nepali..." required class="premium-input w-full p-3 rounded-xl text-sm"><input id="hw-txt" placeholder="Homework" required class="premium-input w-full p-3 rounded-xl text-sm"><button id="btn-h-save" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Post</button></form></div><div class="app-card p-4 rounded-2xl"><div id="list-hw" class="space-y-2"></div></div></div>
+<div id="tab-notice" class="hidden"><div id="box-add-notice" class="app-card p-4 rounded-2xl mb-3"><b class="text-sm">Notice - <span class="teacher-only-class text-[10px] text-indigo-600"></span></b><form id="form-add-notice" class="mt-2 space-y-2"><select id="nt-class" class="premium-input w-full p-3 rounded-xl text-sm"></select><input id="nt-date" type="date" class="premium-input w-full p-3 rounded-xl text-sm"><input id="nt-txt" placeholder="Notice" required class="premium-input w-full p-3 rounded-xl text-sm"><button id="btn-n-save" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Post</button></form></div><div class="app-card p-4 rounded-2xl"><div id="list-nt" class="space-y-2"></div></div></div>
+<div id="tab-gallery" class="hidden"><div id="box-add-gallery" class="app-card p-4 rounded-2xl mb-3"><b class="text-sm">Gallery - <span class="teacher-only-class text-[10px] text-indigo-600"></span> (50 MB FREE)</b><form id="form-add-gallery" class="mt-2 space-y-2"><select id="gal-class" class="premium-input w-full p-3 rounded-xl text-sm font-bold"></select><input id="gal-title" placeholder="Title" required class="premium-input w-full p-3 rounded-xl text-sm"><input id="gal-file" type="file" accept="image/*" required class="premium-input w-full p-3 rounded-xl text-sm"><p class="text-[10px] text-slate-500">50 MB auto 800KB compress - FREE, no billing</p><button id="btn-g-save" class="w-full bg-pink-600 text-white py-3 rounded-xl font-bold">Upload (50 MB FREE)</button></form></div><div class="app-card p-4 rounded-2xl"><div id="list-gallery" class="grid grid-cols-2 gap-2"></div></div></div>
+<div id="tab-settings" class="hidden"><div class="app-card p-4 rounded-2xl border-t-4 border-yellow-400 mb-3"><b class="text-sm">⚙️ Settings & Expiry</b><p id="current-expiry" class="font-black mt-2"></p><p id="days-left-admin" class="text-xs mt-1"></p><div class="mt-3 space-y-2"><input id="custom-expiry-date" type="date" class="premium-input w-full p-3 rounded-xl text-sm font-bold"><button onclick="setCustomExpiry()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">📅 Date Set</button><div class="grid grid-cols-3 gap-2"><button onclick="addExpiry(7)" class="bg-blue-500 text-white py-2 rounded-xl text-xs">+7 दिन</button><button onclick="addExpiry(30)" class="bg-blue-600 text-white py-2 rounded-xl text-xs">+30 दिन</button><button onclick="addExpiry(365)" class="bg-purple-600 text-white py-2 rounded-xl text-xs">+1 Year</button></div></div></div><div class="app-card p-4 rounded-2xl border-t-4 border-rose-500 mb-3"><b class="text-sm">🔐 Admin Username/Password</b><div class="mt-3 space-y-2"><input id="edit-admin-email" placeholder="Admin Username" class="premium-input w-full p-3 rounded-xl text-sm font-bold"><input id="edit-admin-pass" placeholder="Admin Password" class="premium-input w-full p-3 rounded-xl text-sm font-bold"><button onclick="updateAdminCreds()" class="w-full bg-rose-600 text-white py-3 rounded-xl font-bold">🔒 Admin Update</button></div></div><div class="app-card p-4 rounded-2xl border-t-4 border-indigo-500"><b class="text-sm">🔑 Teacher Password Change</b><input id="admin-search" placeholder="Teacher Name Search..." class="premium-input w-full p-2 rounded-xl text-sm mt-2" oninput="filterAdmins()"><div id="list-admin-edit" class="mt-3 space-y-2"></div></div></div>
+</main></div>
+<div id="screen-expired" class="hidden fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center p-6 text-center"><div class="bg-white rounded-3xl p-8 max-w-sm w-full"><div class="text-5xl mb-2">🔒</div><h2 class="text-xl font-black text-rose-600">App Expired</h2><p id="expired-date" class="text-xs mt-2"></p><button onclick="location.reload()" class="w-full mt-3 bg-indigo-600 text-white py-2 rounded-xl">Check Again</button><button onclick="logout()" class="w-full mt-2 bg-slate-900 text-white py-3 rounded-xl font-bold text-xs">🚪 Sign Out</button></div></div>
+<script type="module">
+const CLASSES=['PG','Nursery','LKG','UKG','1','2','3','4','5'];
+function fill(id){const e=document.getElementById(id); if(!e) return; const opts=id.includes('att-filter')? ['','PG','Nursery','LKG','UKG','1','2','3','4','5'] : CLASSES; e.innerHTML=opts.map(c=>`<option value="${c}">${c===''?'All Class':c}</option>`).join('');}
+['stu-class','s-class','t-class','fee-class','res-class','hw-class','nt-class','gal-class','att-filter-class'].forEach(x=>fill(x));
+let me=null; let db=window.db;
+let appSettings={expiryDate:'2099-12-31', adminEmail:'admin', adminPass:'admin123'};
+const today=new Date().toISOString().split('T')[0];
+function showToast(msg){const t=document.getElementById('toast'); t.innerText=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',3000);}
+function getRelativeDateLabel(dateStr){if(!dateStr) return ''; const d=new Date(dateStr); const now=new Date(); now.setHours(0,0,0,0); d.setHours(0,0,0,0); const diff=Math.round((d-now)/86400000); if(diff===0) return 'Today'; if(diff===1) return '1 day left'; if(diff>1) return `${diff} days left`; if(diff===-1) return '1 day ago'; return `${Math.abs(diff)} days ago`;}
+let galleryCache=[]; let currentPhotoIndex=-1;
+let allStudentsCacheFull=[];
+window.openPhotoByIndex=(idx)=>{const item=galleryCache[idx]; if(!item) return; currentPhotoIndex=idx; document.getElementById('modal-img').src=item.url; document.getElementById('modal-title').innerText=item.title; document.getElementById('modal-cls').innerText='Class: '+(item.cls||''); document.getElementById('photo-modal').style.display='flex';}
+window.closePhoto=()=>{document.getElementById('photo-modal').style.display='none';}
+window.downloadCurrentPhoto=()=>{ if(currentPhotoIndex<0) return; const item=galleryCache[currentPhotoIndex]; const a=document.createElement('a'); a.href=item.url; a.target='_blank'; a.download=item.title+'.jpg'; a.click(); }
+window.setRole=r=>{document.getElementById('btn-admin').className=r==='admin'?'flex-1 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl':'flex-1 py-2 text-xs font-bold text-slate-600 rounded-xl';document.getElementById('btn-student').className=r==='student'?'flex-1 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl':'flex-1 py-2 text-xs font-bold text-slate-600 rounded-xl';document.getElementById('form-admin').classList.toggle('hidden',r==='student');document.getElementById('form-student').classList.toggle('hidden',r==='admin');}
+document.getElementById('form-admin').addEventListener('submit',async e=>{
+ e.preventDefault(); const email=document.getElementById('admin-email').value.trim(); const pass=document.getElementById('admin-pass').value.trim();
+ if((email===appSettings.adminEmail || email==='admin@paradise.com' || email==='admin') && (pass===appSettings.adminPass || pass==='admin123')){ const u={role:'admin', name:'Admin'}; localStorage.setItem('paradise_user',JSON.stringify(u)); enter(u); return; }
+ try{ const q=await window.FB.getDocs(window.FB.query(window.FB.collection(db,"teachers"), window.FB.where("email","==",email), window.FB.where("pass","==",pass))); if(!q.empty){const d=q.docs[0]; const u={...d.data(), id:d.id, role:'teacher'}; localStorage.setItem('paradise_user',JSON.stringify(u)); enter(u); return;} }catch(err){ alert(err.message); }
+ document.getElementById('login-error').innerText='Username / Password मिलेन'; document.getElementById('login-error').classList.remove('hidden');
+});
+document.getElementById('form-student').addEventListener('submit',async e=>{
+ e.preventDefault(); const cls=document.getElementById('stu-class').value; const roll=document.getElementById('stu-roll').value.trim(); const q=await window.FB.getDocs(window.FB.query(window.FB.collection(db,"students"), window.FB.where("cls","==",cls), window.FB.where("roll","==",roll))); if(!q.empty){const u={...q.docs[0].data(), id:q.docs[0].id, role:'student'}; localStorage.setItem('paradise_user',JSON.stringify(u)); enter(u);} else {document.getElementById('login-error').innerText='Student भेटिएन'; document.getElementById('login-error').classList.remove('hidden');}
+});
+function enter(u){
+ me=u; 
+ if(new Date() > new Date(appSettings.expiryDate+'T23:59:59') && u.role!=='admin'){ document.getElementById('screen-login').classList.add('hidden'); document.getElementById('screen-app').classList.add('hidden'); document.getElementById('screen-expired').classList.remove('hidden'); document.getElementById('expired-date').innerText='Expiry: '+appSettings.expiryDate; return; }
+ document.getElementById('screen-login').classList.add('hidden'); 
+ document.getElementById('screen-app').classList.remove('hidden'); 
+ const isAdmin=u.role==='admin'; const isTeacher=u.role==='teacher'; const isStudent=u.role==='student';
+ const teacherCls = u.cls || '';
+ document.getElementById('my-role').innerText = u.role + (teacherCls ? ' - '+teacherCls : '');
+ document.getElementById('tab-btn-settings').classList.toggle('hidden', !isAdmin);
+ document.getElementById('tab-btn-teachers').classList.toggle('hidden', isStudent || isTeacher);
+ document.getElementById('perm-info').innerText = isStudent ? 'आफ्नो मात्र' : isTeacher ? 'Class '+teacherCls+' मात्र' : 'Full Control';
+ document.getElementById('teacher-class-info').innerText = isTeacher ? 'Class '+teacherCls+' Locked' : '';
+ document.querySelectorAll('.teacher-only-class').forEach(el=>el.innerText=isTeacher?'Class '+teacherCls+' Locked':'');
+ document.getElementById('att-class-box').classList.toggle('hidden', isStudent);
+ document.getElementById('att-date-filter').classList.toggle('hidden', isStudent);
+ const searchEl=document.getElementById('student-search');
+ if(searchEl){ searchEl.classList.toggle('hidden', !isAdmin); }
+ if(isTeacher){
+   ['s-class','fee-class','res-class','hw-class','nt-class','gal-class','att-filter-class'].forEach(id=>{
+     const el=document.getElementById(id);
+     if(el){ el.innerHTML=`<option value="${teacherCls}">${teacherCls}</option>`; el.value=teacherCls; el.disabled=true; el.classList.add('bg-slate-200'); }
+   });
+   document.getElementById('att-class-box').innerHTML=`<div class="p-3 bg-indigo-50 border rounded-xl text-center font-black text-indigo-700">Class ${teacherCls} - Permanent</div>`;
+   document.getElementById('box-add-teacher')?.classList.add('hidden');
+ } else if(!isStudent){
+   document.getElementById('att-class-box').innerHTML=`<select id="att-class" class="premium-input w-full p-3 rounded-xl text-sm font-bold"><option value="">Class छान्नुहोस्</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select>`;
+   if(u.cls){ const ac=document.getElementById('att-class'); if(ac) ac.value=u.cls; }
+   const ac=document.getElementById('att-class'); if(ac) ac.onchange=loadAttStudents;
+ } else {
+   document.getElementById('att-class-box').innerHTML='';
+ }
+ ['box-add-student','box-add-fees','box-add-result','box-add-hw','box-add-notice','box-add-gallery'].forEach(id=>{document.getElementById(id)?.classList.toggle('hidden', isStudent);});
+ document.getElementById('hw-date').value=today; document.getElementById('nt-date').value=today; document.getElementById('fee-date').value=today;
+ if(isAdmin){ document.getElementById('edit-admin-email').value=appSettings.adminEmail||'admin'; document.getElementById('edit-admin-pass').value=appSettings.adminPass||'admin123'; } 
+ liveAll(); if(isStudent) setTimeout(loadAttStudents,500);
+}
+window.logout=()=>{ localStorage.removeItem('paradise_user'); me=null; document.getElementById('screen-app').classList.add('hidden'); document.getElementById('screen-expired').classList.add('hidden'); document.getElementById('screen-login').classList.remove('hidden'); document.getElementById('login-error').classList.add('hidden'); showToast('Logged Out'); }
+window.openTab=(t,b)=>{document.querySelectorAll('main>div').forEach(d=>d.classList.add('hidden')); document.getElementById('tab-'+t).classList.remove('hidden'); document.querySelectorAll('.tab').forEach(x=>x.classList.remove('bg-indigo-600','text-white')); if(b) b.classList.add('bg-indigo-600','text-white'); if(t==='attendance') loadAttStudents();}
+let attStatus={}; window.setAtt=(id,st)=>{attStatus[id]=st; document.querySelectorAll(`[data-sid="${id}"] .att-btn`).forEach(b=>b.classList.remove('active')); const btn=document.getElementById(`att-${id}-${st}`); if(btn) btn.classList.add('active');}
+async function loadAttStudents(){
+ const isStudent = me?.role==='student';
+ const isTeacher = me?.role==='teacher';
+ const boxMark = document.getElementById('box-att-mark');
+ const info = document.getElementById('att-info');
+ if(isStudent){
+   if(boxMark) boxMark.innerHTML=`<div class="bg-indigo-50 border p-3 rounded-xl text-center"><p class="font-black text-indigo-700 text-sm">${me.name} - ${me.cls}</p><p class="text-[10px] text-slate-500">Permanent - आफ्नो मात्र</p></div>`;
+   if(info) info.innerText=me.name+' - '+me.cls;
+   return;
+ }
+ let cls = me?.cls;
+ if(!isTeacher) cls = document.getElementById('att-class')?.value || me?.cls;
+ if(!cls) return;
+ const snap=(await window.FB.getDocs(window.FB.collection(db,"students"))).docs.filter(d=>d.data().cls===cls);
+ attStatus={}; snap.forEach(d=>attStatus[d.id]='Present');
+ boxMark.innerHTML=`<button id="btn-save-att" class="w-full bg-emerald-600 text-white py-3 rounded-xl mb-3 font-bold">Save ${cls} - ${today}</button>`+snap.map(d=>{const x=d.data(); return `<div data-sid="${d.id}" class="flex justify-between items-center p-3 bg-slate-50 border rounded-xl mb-2"><div><p class="font-bold text-sm">${x.name}</p><span class="text-[10px]">Roll ${x.roll}</span></div><div class="flex gap-2"><button id="att-${d.id}-Present" onclick="setAtt('${d.id}','Present')" class="att-btn present active">✅ Present</button><button id="att-${d.id}-Absent" onclick="setAtt('${d.id}','Absent')" class="att-btn absent">❌ Absent</button></div></div>`}).join('');
+ info.innerText=cls; document.getElementById('btn-save-att').onclick=()=>saveAtt(cls,snap);
+}
+async function saveAtt(cls,students){ const btn=document.getElementById('btn-save-att'); btn.innerText='Saving...'; try{ for(const d of students){ const st=attStatus[d.id]||'Present'; const old=await window.FB.getDocs(window.FB.query(window.FB.collection(db,"attendance"), window.FB.where("sid","==",d.id), window.FB.where("d","==",today))); if(old.empty) await window.FB.addDoc(window.FB.collection(db,"attendance"),{sid:d.id,n:d.data().name,cls,d:today,st,roll:d.data().roll}); } showToast('Attendance Saved'); }catch(e){ alert(e.message); } btn.innerText='Save '+cls+' - '+today; }
+window.filterAttendance=()=>{ liveAll(); }
+let allTeachersCache=[];
+window.filterStudents=()=>{
+  if(me?.role!=='admin') return;
+  const q=document.getElementById('student-search')?.value.toLowerCase().trim()||'';
+  if(!q){ renderStudents(allStudentsCacheFull); return; }
+  const filtered = allStudentsCacheFull.filter(s=>{
+    const x=s.data();
+    return x.cls.toLowerCase()===q || x.cls.toLowerCase().includes(q);
+  });
+  renderStudents(filtered);
+}
+function renderStudents(docs){
+  const canDelete = me && me.role !== 'student';
+  document.getElementById('list-students').innerHTML=docs.map(d=>{
+    const x=d.data();
+    return `<div class="flex justify-between p-3 bg-slate-50 border rounded-xl"><div><p class="font-bold text-sm">${x.name}</p><span class="text-[10px]">Class ${x.cls} • Roll ${x.roll}</span></div>${canDelete?`<button onclick="delDoc('students','${d.id}')" class="w-8 h-8 bg-rose-50 text-rose-600 rounded-lg">✕</button>`:''}</div>`;
+  }).join('')||'No data';
+}
+function liveAll(){
+ const isStudent = me?.role==='student'; 
+ const isTeacher = me?.role==='teacher';
+ const teacherCls = me?.cls;
+ const myCls=me?.cls; const myRoll=me?.roll; const myId=me?.id; 
+ const canDelete = me && me.role !== 'student';
+ window.FB.onSnapshot(window.FB.collection(db,"students"),s=>{
+   let docs=s.docs;
+   if(isStudent) docs=docs.filter(d=>d.id===myId);
+   if(isTeacher) docs=docs.filter(d=>d.data().cls===teacherCls);
+   if(me?.role==='admin'){ allStudentsCacheFull=s.docs; }
+   else { allStudentsCacheFull=docs; }
+   const q=document.getElementById('student-search')?.value.toLowerCase().trim()||'';
+   if(me?.role==='admin' && q){
+     const filtered = allStudentsCacheFull.filter(sd=>sd.data().cls.toLowerCase().includes(q));
+     renderStudents(filtered);
+   } else {
+     renderStudents(docs);
+   }
+ });
+ window.FB.onSnapshot(window.FB.collection(db,"teachers"),s=>{ allTeachersCache=s.docs.map(d=>({id:d.id, ...d.data()})); filterTeachers(); document.getElementById('list-admin-edit').innerHTML=allTeachersCache.map(t=>`<div class="p-3 bg-slate-50 border rounded-xl"><p class="font-bold text-sm">${t.name} - ${t.cls}</p><div class="flex gap-2 mt-2"><input id="edit-email-${t.id}" value="${t.email}" class="premium-input flex-1 p-2 text-xs rounded-lg"><input id="edit-pass-${t.id}" value="${t.pass}" class="premium-input flex-1 p-2 text-xs rounded-lg"></div><button onclick="updateTeacher('${t.id}')" class="w-full mt-2 bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold">Update Teacher</button></div>`).join('')||'No Teachers'; });
+ window.FB.onSnapshot(window.FB.collection(db,"attendance"),s=>{
+   let docs=s.docs;
+   if(isStudent) docs=docs.filter(d=>d.data().sid===myId);
+   else if(isTeacher) docs=docs.filter(d=>d.data().cls===teacherCls);
+   else { const fCls=document.getElementById('att-filter-class')?.value; const fDate=document.getElementById('att-filter-date')?.value; if(fCls) docs=docs.filter(d=>d.data().cls===fCls); if(fDate) docs=docs.filter(d=>d.data().d===fDate); }
+   docs.sort((a,b)=> new Date(b.data().d)-new Date(a.data().d));
+   if(isStudent){
+     const present=docs.filter(d=>d.data().st==='Present').length; const absent=docs.filter(d=>d.data().st==='Absent').length;
+     document.getElementById('list-att').innerHTML=`<div class="grid grid-cols-2 gap-2 mb-3"><div class="bg-emerald-50 border p-3 rounded-xl text-center"><p class="text-xl font-black text-emerald-600">${present}</p><p class="text-[10px]">कुल Present</p></div><div class="bg-rose-50 border p-3 rounded-xl text-center"><p class="text-xl font-black text-rose-600">${absent}</p><p class="text-[10px]">कुल Absent</p></div></div>`+docs.map(d=>{const a=d.data(); return `<div class="flex justify-between items-center p-3 bg-white border rounded-xl text-xs"><div><p class="font-bold">📅 ${a.d}</p></div><span class="px-3 py-1 rounded-full text-[11px] font-black ${a.st==='Present'?'bg-emerald-100 text-emerald-700':'bg-rose-100 text-rose-700'}">${a.st==='Present'?'✅ Present':'❌ Absent'}</span></div>`}).join('');
+   } else {
+     document.getElementById('list-att').innerHTML=docs.slice(0,100).map(d=>{const a=d.data(); return `<div class="flex justify-between items-center p-2 bg-white border rounded-xl text-xs"><span>${a.n} - ${a.cls} - ${a.d}</span><div class="flex gap-2 items-center"><span class="font-bold ${a.st==='Present'?'text-emerald-600':'text-rose-600'}">${a.st==='Present'?'✅ Present':'❌ Absent'}</span><button onclick="delDoc('attendance','${d.id}')" class="w-6 h-6 bg-rose-50 text-rose-600 rounded">✕</button></div></div>`}).join('')||'No attendance';
+   }
+ });
+ window.FB.onSnapshot(window.FB.collection(db,"fees"),s=>{ let docs=s.docs; if(isStudent) docs=docs.filter(d=>d.data().roll===myRoll && d.data().cls===myCls); if(isTeacher) docs=docs.filter(d=>d.data().cls===teacherCls); docs.sort((a,b)=> new Date(b.data().feeDate||b.data().d)-new Date(a.data().feeDate||a.data().d)); document.getElementById('list-fees').innerHTML=docs.map(d=>{ const x=d.data(); const total=parseInt(x.amount)||0; const paid=parseInt(x.paid)||0; let baki=total-paid; if(x.status==='Paid') baki=0; if(baki<0) baki=0; const label=getRelativeDateLabel(x.feeDate||x.d); return `<div class="p-3 bg-emerald-50 border rounded-xl text-xs"><div class="flex justify-between"><div><p class="font-bold">Roll ${x.roll} - Rs.${x.amount} ${x.status} - ${x.cls}</p><p class="text-[11px] mt-1 font-bold">📅 ${x.feeDate||x.d} - ${label} | Paid: Rs.${paid} | <span class="text-rose-600">Baki: Rs.${baki}</span></p></div>${canDelete?`<button onclick="delDoc('fees','${d.id}')" class="w-7 h-7 bg-rose-50 text-rose-600 rounded-lg">✕</button>`:''}</div></div>` }).join('')||'No Fees'; });
+ window.FB.onSnapshot(window.FB.collection(db,"results"),s=>{ let docs=s.docs; if(isStudent) docs=docs.filter(d=>d.data().roll===myRoll && d.data().cls===myCls); if(isTeacher) docs=docs.filter(d=>d.data().cls===teacherCls); document.getElementById('list-result').innerHTML=docs.map(d=>{ const x=d.data(); return `<div class="p-3 bg-indigo-50 border rounded-xl text-xs"><div class="flex justify-between"><div><p class="font-bold">${x.terminal||''} - Roll ${x.roll} - ${x.subject}: ${x.marks} - ${x.cls}</p><p class="text-[10px] mt-1">Remark: ${x.remark||'-'}</p></div>${canDelete?`<button onclick="delDoc('results','${d.id}')" class="w-7 h-7 bg-rose-50 text-rose-600 rounded-lg">✕</button>`:''}</div></div>` }).join('')||'No Result'; });
+ window.FB.onSnapshot(window.FB.collection(db,"homework"),s=>{ let docs=s.docs; if(isStudent) docs=docs.filter(d=>d.data().cls===myCls); if(isTeacher) docs=docs.filter(d=>d.data().cls===teacherCls); document.getElementById('list-hw').innerHTML=docs.map(d=>{ const x=d.data(); const label=getRelativeDateLabel(x.hwDate||x.d); return `<div class="p-3 bg-slate-50 border rounded-xl text-xs"><div class="flex justify-between"><span class="font-bold">${x.subject?x.subject+' - ':''}${x.t} - ${x.cls}</span><div class="flex gap-2 items-center"><span class="text-[9px] bg-yellow-100 px-2 py-1 rounded-full">${label}</span>${canDelete?`<button onclick="delDoc('homework','${d.id}')" class="w-6 h-6 bg-rose-50 text-rose-600 rounded">✕</button>`:''}</div></div><p class="text-[10px] text-slate-500">📅 ${x.hwDate||x.d}</p></div>` }).join('')||'No HW'; });
+ window.FB.onSnapshot(window.FB.collection(db,"notice"),s=>{ let docs=s.docs; if(isStudent) docs=docs.filter(d=>d.data().cls===myCls); if(isTeacher) docs=docs.filter(d=>d.data().cls===teacherCls); document.getElementById('list-nt').innerHTML=docs.map(d=>{ const x=d.data(); const label=getRelativeDateLabel(x.ntDate||x.d); return `<div class="p-3 bg-yellow-50 border rounded-xl text-xs"><div class="flex justify-between"><span class="font-bold">${x.t}</span><div class="flex gap-2 items-center"><span class="text-[9px] bg-white px-2 py-1 rounded-full">${label}</span>${canDelete?`<button onclick="delDoc('notice','${d.id}')" class="w-6 h-6 bg-rose-50 text-rose-600 rounded">✕</button>`:''}</div></div><p class="text-[10px] text-slate-500">📅 ${x.ntDate||x.d} - ${x.cls}</p></div>` }).join('')||'No Notice'; });
+ window.FB.onSnapshot(window.FB.collection(db,"gallery"),s=>{ let docs=s.docs.map(d=>({id:d.id, ...d.data()})); if(isStudent) docs=docs.filter(d=>d.cls===myCls); if(isTeacher) docs=docs.filter(d=>d.cls===teacherCls); galleryCache=docs; document.getElementById('list-gallery').innerHTML=docs.map((x, idx)=>`<div class="bg-white border rounded-xl overflow-hidden"><img onclick="openPhotoByIndex(${idx})" src="${x.url}" class="w-full h-28 object-cover cursor-pointer"><div class="p-2"><p class="text-[11px] font-bold truncate">${x.title}</p><p class="text-[9px] text-slate-500">${x.cls} - ${x.d||''}</p></div><button onclick="openPhotoByIndex(${idx})" class="w-full bg-indigo-50 text-indigo-600 text-[10px] py-1.5">View / Download</button>${canDelete?`<button onclick="delDoc('gallery','${x.id}')" class="w-full bg-rose-50 text-rose-600 text-[10px] py-1">Delete</button>`:''}</div>`).join('')||'No Photos'; });
+ window.FB.onSnapshot(window.FB.doc(db,"app_settings","main"),s=>{ if(s.exists()){appSettings=s.data(); updateExpiry(); if(me?.role==='admin'){ document.getElementById('edit-admin-email').value=appSettings.adminEmail||'admin'; document.getElementById('edit-admin-pass').value=appSettings.adminPass||'admin123'; }}});
+}
+window.filterTeachers=()=>{ const q=document.getElementById('teacher-search')?.value.toLowerCase()||''; const filtered = allTeachersCache.filter(t=>t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)); document.getElementById('list-teachers').innerHTML=filtered.map(t=>`<div class="flex justify-between p-3 bg-slate-50 border rounded-xl"><div><p class="font-bold text-sm">${t.name} (${t.cls})</p><p class="text-[10px]">${t.email} / ${t.pass}</p></div><button onclick="delDoc('teachers','${t.id}')" class="w-8 h-8 bg-rose-50 text-rose-600 rounded-lg">✕</button></div>`).join('')||'No teacher'; }
+window.filterAdmins=()=>{ const q=document.getElementById('admin-search')?.value.toLowerCase()||''; const filtered = allTeachersCache.filter(t=>t.name.toLowerCase().includes(q)); document.getElementById('list-admin-edit').innerHTML=filtered.map(t=>`<div class="p-3 bg-slate-50 border rounded-xl"><p class="font-bold text-sm">${t.name} - ${t.cls}</p><div class="flex gap-2 mt-2"><input id="edit-email-${t.id}" value="${t.email}" class="premium-input flex-1 p-2 text-xs rounded-lg"><input id="edit-pass-${t.id}" value="${t.pass}" class="premium-input flex-1 p-2 text-xs rounded-lg"></div><button onclick="updateTeacher('${t.id}')" class="w-full mt-2 bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold">Update Teacher</button></div>`).join(''); }
+window.updateTeacher=async(id)=>{ const email=document.getElementById(`edit-email-${id}`).value.trim(); const pass=document.getElementById(`edit-pass-${id}`).value.trim(); try{ await window.FB.updateDoc(window.FB.doc(db,"teachers",id),{email,pass}); showToast('Teacher Updated'); }catch(e){ alert(e.message); } }
+window.updateAdminCreds=async()=>{ const email=document.getElementById('edit-admin-email').value.trim(); const pass=document.getElementById('edit-admin-pass').value.trim(); if(!email || !pass) return alert('Username Password lekhnus'); try{ await window.FB.setDoc(window.FB.doc(db,"app_settings","main"),{...appSettings, adminEmail:email, adminPass:pass},{merge:true}); showToast('Admin Updated'); appSettings.adminEmail=email; appSettings.adminPass=pass; }catch(e){ alert(e.message); } }
+async function updateExpiry(){ document.getElementById('current-expiry').innerText='Expiry: '+appSettings.expiryDate; const diff=Math.ceil((new Date(appSettings.expiryDate)-new Date())/86400000); document.getElementById('days-left-admin').innerText=diff>0?diff+' दिन बाँकी':diff===0?'आज Deadline!':'Expired '+Math.abs(diff)+' day ago'; document.getElementById('expiry-info-login').innerText=diff>0?'Active till '+appSettings.expiryDate:'Expired'; document.getElementById('expired-date').innerText='Expiry: '+appSettings.expiryDate;}
+async function handleSave(formId, btnId, collectionName, dataObj, successMsg){ 
+  if(me?.role==='teacher' && dataObj.cls){ dataObj.cls = me.cls; }
+  const btn=document.getElementById(btnId); const oldText=btn.innerText; btn.innerText='Saving...'; btn.disabled=true; 
+  try{ await window.FB.addDoc(window.FB.collection(db,collectionName), dataObj); document.getElementById(formId).reset(); 
+  if(me?.role==='teacher'){ 
+    const teacherCls=me.cls;
+    ['s-class','fee-class','res-class','hw-class','nt-class','gal-class'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){ el.innerHTML=`<option value="${teacherCls}">${teacherCls}</option>`; el.value=teacherCls; el.disabled=true; }
+    });
+  }
+  document.getElementById('hw-date').value=today; document.getElementById('nt-date').value=today; document.getElementById('fee-date').value=today; showToast(successMsg); }catch(e){ alert(e.message); } btn.innerText=oldText; btn.disabled=false; 
+}
+document.getElementById('form-add-student').addEventListener('submit',e=>{e.preventDefault(); handleSave('form-add-student','btn-s-save','students',{name:document.getElementById('s-name').value.trim(),cls:document.getElementById('s-class').value,roll:document.getElementById('s-roll').value.trim(),d:today}, 'Student Saved');});
+document.getElementById('form-add-teacher').addEventListener('submit',e=>{e.preventDefault(); handleSave('form-add-teacher','btn-t-save','teachers',{name:document.getElementById('t-name').value.trim(),email:document.getElementById('t-email').value.trim(),pass:document.getElementById('t-pass').value,cls:document.getElementById('t-class').value}, 'Teacher Added');});
+document.getElementById('form-add-fees').addEventListener('submit',e=>{e.preventDefault(); const total=document.getElementById('fee-amount').value; const paid=document.getElementById('fee-paid').value; handleSave('form-add-fees','btn-f-save','fees',{cls:document.getElementById('fee-class').value,roll:document.getElementById('fee-roll').value,amount:total,paid:paid,feeDate:document.getElementById('fee-date').value||today,status:document.getElementById('fee-status').value,d:today}, 'Fees Saved');});
+document.getElementById('form-add-result').addEventListener('submit',e=>{e.preventDefault(); handleSave('form-add-result','btn-r-save','results',{cls:document.getElementById('res-class').value,roll:document.getElementById('res-roll').value,subject:document.getElementById('res-sub').value,marks:document.getElementById('res-marks').value,terminal:document.getElementById('res-terminal').value,remark:document.getElementById('res-remark').value,discipline:document.getElementById('res-discipline').value,weakness:document.getElementById('res-weakness').value,d:today}, 'Result Saved');});
+document.getElementById('form-add-hw').addEventListener('submit',e=>{e.preventDefault(); handleSave('form-add-hw','btn-h-save','homework',{t:document.getElementById('hw-txt').value,subject:document.getElementById('hw-sub').value,cls:document.getElementById('hw-class').value,hwDate:document.getElementById('hw-date').value||today,d:today}, 'HW Posted');});
+document.getElementById('form-add-notice').addEventListener('submit',e=>{e.preventDefault(); handleSave('form-add-notice','btn-n-save','notice',{t:document.getElementById('nt-txt').value,cls:document.getElementById('nt-class').value,ntDate:document.getElementById('nt-date').value||today,d:today}, 'Notice Posted');});
+document.getElementById('form-add-gallery').addEventListener('submit',async e=>{
+  e.preventDefault(); const btn=document.getElementById('btn-g-save'); const fileInput=document.getElementById('gal-file'); const file=fileInput.files[0]; if(!file) return alert('Photo select garnus'); if(file.size > 50*1024*1024){ alert('50 MB bhanda thulo hudaina!'); return; } btn.innerText='Compressing 50MB...'; btn.disabled=true; 
+  try{ 
+    let cls = document.getElementById('gal-class').value;
+    if(me?.role==='teacher') cls = me.cls;
+    const title=document.getElementById('gal-title').value; 
+    const compressedBase64 = await compressToUnder1MB(file); 
+    await window.FB.addDoc(window.FB.collection(db,"gallery"),{title,url:compressedBase64,cls,d:today,size:file.size}); 
+    e.target.reset(); 
+    if(me?.role==='teacher'){
+      const el=document.getElementById('gal-class');
+      if(el){ el.innerHTML=`<option value="${me.cls}">${me.cls}</option>`; el.value=me.cls; el.disabled=true; }
+    }
+    showToast('50 MB -> 800KB Uploaded FREE!'); 
+  }catch(err){ alert('Error: '+err.message); } 
+  btn.innerText='Upload (50 MB FREE)'; btn.disabled=false;
+});
+function compressToUnder1MB(file){ return new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=e=>{ const img=new Image(); img.onload=()=>{ const canvas=document.createElement('canvas'); let w=img.width, h=img.height; if(w>1280){ h*=1280/w; w=1280; } canvas.width=w; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h); let quality=0.7; let dataUrl=canvas.toDataURL('image/jpeg',quality); while(dataUrl.length > 900000 && quality>0.1){ quality-=0.1; dataUrl=canvas.toDataURL('image/jpeg',quality); } resolve(dataUrl); }; img.src=e.target.result; }; reader.readAsDataURL(file); }); }
+window.delDoc=async(c,id)=>{if(me && me.role==='student') return; if(!confirm('Delete?')) return; try{await window.FB.deleteDoc(window.FB.doc(db,c,id)); showToast('Deleted');}catch(e){alert(e.message);}}
+window.exportStudents=async()=>{const snap=await window.FB.getDocs(window.FB.collection(db,"students")); const data=snap.docs.map(d=>d.data()); const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Students"); XLSX.writeFile(wb,"students.xlsx");}
+window.addExpiry=async(d)=>{let b=new Date(appSettings.expiryDate); if(new Date()>b) b=new Date(); b.setDate(b.getDate()+d); await window.FB.setDoc(window.FB.doc(db,"app_settings","main"),{...appSettings,expiryDate:b.toISOString().split('T')[0]},{merge:true});}
+window.setCustomExpiry=async()=>{const d=document.getElementById('custom-expiry-date').value; if(!d) return; await window.FB.setDoc(window.FB.doc(db,"app_settings","main"),{...appSettings,expiryDate:d},{merge:true}); showToast('Expiry Set');}
+window.onload=async()=>{ try{const s=await window.FB.getDoc(window.FB.doc(db,"app_settings","main")); if(s.exists()) appSettings=s.data(); updateExpiry();}catch(e){} const saved=localStorage.getItem('paradise_user'); if(saved){try{enter(JSON.parse(saved));}catch(e){}} }
+</script>
+</body>
+</html>
